@@ -10,10 +10,10 @@ import secrets
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
-CORS(app, supports_credentials=True, origins=["http://localhost:3000", "http://192.168.0.12:3000"])
+CORS(app, supports_credentials=True, origins=["http://localhost:3000", "http://192.168.0.12:3000", "https://mealmonkeyapplication.netlify.app/"])
 app.config.update(
-    SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=False
+    SESSION_COOKIE_SAMESITE="None",  # because frontend is cross-origin
+    SESSION_COOKIE_SECURE=True        # Render uses HTTPS
 )
 
 # Cloudinary config
@@ -21,6 +21,10 @@ cloudinary.config(
     cloud_name="djsaxy3g0",
     api_key="825115494888219",
     api_secret="IlR0mMctCif7jkS6Whn3AfsLxbc"
+)
+app.config.update(
+    SESSION_COOKIE_SAMESITE="None",   # cross-site
+    SESSION_COOKIE_SECURE=True        # because Render is HTTPS
 )
 
 # ---------------- DATABASE ----------------

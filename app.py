@@ -10,7 +10,10 @@ import secrets
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
-CORS(app, supports_credentials=True, origins=["http://localhost:3000", "http://192.168.0.12:3000", "https://mealmonkeyapplication.netlify.app/"])
+CORS(app, supports_credentials=True, origins=[
+    "https://mealmonkeyapplication.netlify.app",
+    "http://localhost:3000"
+])
 app.config.update(
     SESSION_COOKIE_SAMESITE="None",  # because frontend is cross-origin
     SESSION_COOKIE_SECURE=True        # Render uses HTTPS

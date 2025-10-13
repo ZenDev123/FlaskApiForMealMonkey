@@ -25,14 +25,14 @@ cloudinary.config(
 
 # ---------------- DATABASE ----------------
 def get_db():
-    if 'db' not in g:
+    if "db" not in g:
         g.db = pymysql.connect(
-            host="localhost",
-            user="root",
-            password="Prithesh0103",
-            database="meal_monkey",
-            cursorclass=pymysql.cursors.DictCursor,
-            autocommit=True
+            host="mealmonkey-mealmonkey-3546.d.aivencloud.com",
+            port=26729,  # int
+            user="avnadmin",
+            password="AVNS_5A05vlS_gakWu8p0-s0",
+            db="defaultdb",
+            cursorclass=pymysql.cursors.DictCursor
         )
     return g.db
 
@@ -105,9 +105,10 @@ def user_login():
     password = data.get("password")
 
     db = get_db()
-    with db.cursor() as cursor:
+    with db.cursor(pymysql.cursors.DictCursor) as cursor:  # <-- add DictCursor here
         cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
         user = cursor.fetchone()
+
 
     if user and check_password_hash(user['password'], password):
         session["user_id"] = user["user_id"]
@@ -695,7 +696,7 @@ def get_user_name():
     db = get_db()
     with db.cursor() as cursor:
         cursor.execute("SELECT name, avatar_url FROM users WHERE user_id=%s", (user_id,))
-        user = cursor.fetchone()
+        user = cursor.fetchone()  # now returns dict
 
     if not user:
         return jsonify({"error": "User not found"}), 404

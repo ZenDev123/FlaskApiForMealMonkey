@@ -98,6 +98,7 @@ def register():
                 "INSERT INTO users (name, email, password, phone, avatar_url) VALUES (%s, %s, %s, %s, %s)",
                 (name, email, password, phone, avatar_url)
             )
+            db.commit()  # 🔥 this line is missing
             return jsonify({
                 "message": "User registered successfully",
                 "avatar_url": avatar_url
@@ -154,6 +155,7 @@ def restaurant_register():
                 (name, email, password)
             )
             cursor.execute("UPDATE restaurant_invites SET used=TRUE WHERE invite_code=%s", (invite_code,))
+            db.commit()  # 🔥 this line is missing
             return jsonify({"message": "Restaurant registered successfully"})
         except Exception as e:
             print("DEBUG:", e)

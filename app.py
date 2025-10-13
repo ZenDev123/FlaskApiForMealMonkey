@@ -57,18 +57,18 @@ def require_role(role):
 @app.route("/delete_food/<int:food_id>", methods=["DELETE"])
 @require_role("restaurant")
 def delete_food(food_id):
-    restaurant_id = session.get("restaurant_id")
     db = get_db()
     with db.cursor() as cursor:
-        # Make sure the food belongs to this restaurant
-        cursor.execute("SELECT * FROM menu WHERE food_id=%s AND restaurant_id=%s", (food_id, restaurant_id))
-        item = cursor.fetchone()
-        if not item:
-            return jsonify({"message": "Item not found or unauthorized"}), 404
-
-        cursor.execute("DELETE FROM menu WHERE food_id=%s", (food_id,))
+        # First delete any order_items linked to this food
+        cursor.execute("DELETE FROM order_items WHERE food_id = %s", (food_id,))
+        
+        # Then delete the food item itself
+        cursor.execute("DELETE FROM menu WHERE food_id = %s", (food_id,))
+        
         db.commit()
-    return jsonify({"message": "Food deleted successfully", "food_id": food_id})
+
+    return jsonify({"message": "Food deleted successfully"}), 200
+
 
 
 # ---------------- USERS ----------------
@@ -632,19 +632,34 @@ def get_orders():
         if not user_id:
             return jsonify({"error": "Login first!"}), 401
 
-        cursor = db.cursor()
-        cursor.execute("SELECT * FROM orders WHERE user_id=%s ORDER BY created_at DESC", (user_id,))
-        orders = cursor.fetchall()
+        cursor = db.cursor()  # <-- default cursor returns tuples
 
+        # Use this to get dicts instead of tuples
+        cursor = db.cursor(pymysql.cursors.DictCursor)  # <-- key fix here
+        cursor.execute("""
+            SELECT 
+                o.*,
+                r.name AS restaurant_name,
+                r.image_url AS restaurant_image
+            FROM orders o
+            JOIN restaurants r ON o.restaurant_id = r.restaurant_id
+            WHERE o.user_id = %s
+            ORDER BY o.created_at DESC
+        """, (user_id,))
+        orders = cursor.fetchall()
+        
         for order in orders:
             cursor.execute("""
-                SELECT oi.*, m.name, m.image_url
+                SELECT 
+                    oi.*,
+                    m.name AS food_name,
+                    m.image_url
                 FROM order_items oi
                 JOIN menu m ON m.food_id = oi.food_id
-                WHERE oi.order_id=%s
+                WHERE oi.order_id = %s
             """, (order["order_id"],))
-
             order["items"] = cursor.fetchall()
+
 
         cursor.close()
         return jsonify(orders)
@@ -653,11 +668,21 @@ def get_orders():
         print("DEBUG /orders error:", e)
         return jsonify({"error": str(e)}), 500
 
+
+
 @app.route("/menu/all", methods=["GET"])
 def get_all_menu_items():
     db = get_db()
     with db.cursor(pymysql.cursors.DictCursor) as cursor:
-        cursor.execute("SELECT * FROM menu WHERE available=TRUE")
+        cursor.execute("""
+            SELECT 
+                m.*, 
+                r.name AS restaurant_name
+            FROM menu m
+            JOIN restaurants r 
+                ON m.restaurant_id = r.restaurant_id
+            WHERE m.available = TRUE
+        """)
         items = cursor.fetchall()
     return jsonify(items)
 

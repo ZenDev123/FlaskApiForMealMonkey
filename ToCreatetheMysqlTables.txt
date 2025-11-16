@@ -1,0 +1,93 @@
+-- Create database
+CREATE DATABASE IF NOT EXISTS meal_monkey;
+USE meal_monkey;
+
+-- Users Table
+CREATE TABLE users (
+    user_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    phone VARCHAR(15),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    avatar_url VARCHAR(255)
+);
+
+-- Restaurants Table
+CREATE TABLE restaurants (
+    restaurant_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    shop_status TINYINT(1) DEFAULT 1,
+    image_url VARCHAR(255)
+);
+
+-- Restaurant Invite Codes
+CREATE TABLE restaurant_invites (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    invite_code VARCHAR(50) UNIQUE,
+    used TINYINT(1) DEFAULT 0
+);
+
+-- Menu Table
+CREATE TABLE menu (
+    food_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    restaurant_id INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    price DECIMAL(8,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    image_url VARCHAR(255),
+    available TINYINT(1) DEFAULT 1,
+    veg_nonveg ENUM('veg','non-veg') NOT NULL DEFAULT 'veg',
+
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants(restaurant_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Cart Table
+CREATE TABLE cart (
+    cart_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    food_id INT NOT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+
+    FOREIGN KEY (food_id) REFERENCES menu(food_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Orders Table
+CREATE TABLE orders (
+    order_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    restaurant_id INT NOT NULL,
+    total_amount DECIMAL(8,2) NOT NULL,
+    order_status ENUM('Pending','Preparing','Delivered','Cancelled') DEFAULT 'Pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants(restaurant_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Order Items Table
+CREATE TABLE order_items (
+    order_item_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    food_id INT NOT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    price DECIMAL(8,2) NOT NULL DEFAULT 0.00,
+
+    FOREIGN KEY (order_id) REFERENCES orders(order_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+
+    FOREIGN KEY (food_id) REFERENCES menu(food_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+);

@@ -10,13 +10,17 @@ import secrets
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
-CORS(app, supports_credentials=True, origins=[
-    "https://mealmonkeyapplication.netlify.app",
-    "http://localhost:3000"
-])
+CORS(app, supports_credentials=True, resources={
+    r"/*": {"origins": [
+        "https://mealmonkeyapplication.netlify.app",
+        "http://localhost:3000"
+    ]}
+})
+
 app.config.update(
-    SESSION_COOKIE_SAMESITE="None",  # because frontend is cross-origin
-    SESSION_COOKIE_SECURE=True        # Render uses HTTPS
+    SESSION_COOKIE_SAMESITE="None",
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_HTTPONLY=True
 )
 
 # Cloudinary config
@@ -24,10 +28,6 @@ cloudinary.config(
     cloud_name="djsaxy3g0",
     api_key="825115494888219",
     api_secret="IlR0mMctCif7jkS6Whn3AfsLxbc"
-)
-app.config.update(
-    SESSION_COOKIE_SAMESITE="None",   # cross-site
-    SESSION_COOKIE_SECURE=True        # because Render is HTTPS
 )
 
 # ---------------- DATABASE ----------------
@@ -42,6 +42,17 @@ def get_db():
             cursorclass=pymysql.cursors.DictCursor
         )
     return g.db
+# !!
+# def get_db():
+#     if "db" not in g:
+#         g.db = pymysql.connect(
+#             host="localhost",
+#             user="root",
+#             password="Prithesh0103",
+#             db="meal_monkey",
+#             cursorclass=pymysql.cursors.DictCursor
+#         )
+#     return g.db
 
 @app.teardown_appcontext
 def close_db(exception):
@@ -254,7 +265,7 @@ def restaurant_menu():
         cursor.execute(query, params)
         menu_items = cursor.fetchall()
 
-    return jsonify(menu_items)
+    return jsonify({"menu": menu_items})
 
 # ---------------- ADD FOOD ----------------
 @app.route("/add_food", methods=["POST"])
@@ -265,10 +276,10 @@ def add_food():
     description = request.form.get("description")
     price = request.form.get("price")
     veg_nonveg = request.form.get("veg_nonveg")
-    available = True
 
     image = request.files.get("image")
     image_url = None
+
     if image:
         upload_result = cloudinary.uploader.upload(image)
         image_url = upload_result["secure_url"]
@@ -276,10 +287,26 @@ def add_food():
     db = get_db()
     with db.cursor() as cursor:
         cursor.execute(
-            "INSERT INTO menu (restaurant_id, name, description, price, veg_nonveg, available, image_url) VALUES (%s,%s,%s,%s,%s,%s,%s)",
-            (restaurant_id, name, description, float(price), veg_nonveg, available, image_url)
+            """
+            INSERT INTO menu (restaurant_id, name, description, price, veg_nonveg, image_url)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            (restaurant_id, name, description, float(price), veg_nonveg, image_url),
         )
-    return jsonify({"message": "Food added successfully!"})
+        db.commit()   # 🔥🔥🔥 THIS IS WHAT YOU ARE MISSING
+
+        new_id = cursor.lastrowid
+
+    return jsonify({
+        "message": "Food added",
+        "food_id": new_id,
+        "name": name,
+        "description": description,
+        "price": price,
+        "veg_nonveg": veg_nonveg,
+        "image_url": image_url
+    })
+
 
 # ---------------- SHOP STATUS ----------------
 @app.route("/get_shop_status", methods=["GET"])
@@ -299,12 +326,20 @@ def toggle_shop_status():
     restaurant_id = session.get("restaurant_id")
     data = request.json
     new_status = data.get("status")
+
     if new_status is None:
         return jsonify({"message": "Missing status"}), 400
+
     db = get_db()
     with db.cursor() as cursor:
-        cursor.execute("UPDATE restaurants SET shop_status=%s WHERE restaurant_id=%s", (new_status, restaurant_id))
+        cursor.execute(
+            "UPDATE restaurants SET shop_status=%s WHERE restaurant_id=%s",
+            (new_status, restaurant_id)
+        )
+    db.commit()   # ⭐ REQUIRED
+
     return jsonify({"status": new_status})
+
 
 # ---------------- INVITE GENERATION ----------------
 @app.route("/generate_invite", methods=["POST"])
@@ -719,6 +754,29 @@ def get_user_name():
 def logout():
     session.clear()
     return jsonify({"message": "Logged out successfully"})
+
+@app.route("/debug_session")
+def debug_session():
+    return jsonify(dict(session))
+
+@app.route("/get_restaurant_image", methods=["GET"])
+def get_restaurant_image():
+    try:
+        cur = get_db().cursor()
+        cur.execute(
+            "SELECT image_url FROM restaurants WHERE restaurant_id = %s",
+            (session["restaurant_id"],)
+        )
+        row = cur.fetchone()
+
+        if row and row["image_url"]:
+            return jsonify({"url": row["image_url"]})
+        else:
+            return jsonify({"url": None})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 
 # ---------------- RUN APP ----------------

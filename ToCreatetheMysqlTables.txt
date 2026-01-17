@@ -91,3 +91,17 @@ CREATE TABLE order_items (
     FOREIGN KEY (food_id) REFERENCES menu(food_id)
         ON DELETE CASCADE ON UPDATE CASCADE
 );
+
+USE meal_monkey;
+
+SET FOREIGN_KEY_CHECKS = 0;
+
+TRUNCATE TABLE order_items;
+TRUNCATE TABLE orders;
+TRUNCATE TABLE cart;
+TRUNCATE TABLE menu;
+TRUNCATE TABLE restaurant_invites;
+TRUNCATE TABLE restaurants;
+TRUNCATE TABLE users;
+
+SET FOREIGN_KEY_CHECKS = 1;

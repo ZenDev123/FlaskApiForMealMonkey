@@ -393,10 +393,6 @@ def upload_restaurant_image():
     img = Image.open(image.stream)
     width, height = img.size
     ratio = width / height
-    
-    # Check for 1:1 ratio
-    if abs(ratio - 1) > 0.01:
-        return jsonify({"message": "Image must be 1:1 ratio"}), 400
 
 
     # Upload to Cloudinary (use stream!)

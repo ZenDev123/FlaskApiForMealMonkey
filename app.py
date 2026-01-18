@@ -34,7 +34,7 @@ def get_db():
     if "db" not in g:
         g.db = pymysql.connect(
             host="mealmonkey-mealmonkey-3546.d.aivencloud.com",
-            port=26729,  # int
+            port=26729,
             user="avnadmin",
             password="AVNS_5A05vlS_gakWu8p0-s0",
             db="defaultdb",

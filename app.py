@@ -6,7 +6,6 @@ import secrets
 import cloudinary
 from PIL import Image
 import cloudinary.uploader
-import secrets
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
@@ -42,17 +41,7 @@ def get_db():
             cursorclass=pymysql.cursors.DictCursor
         )
     return g.db
-# !!
-# def get_db():
-#     if "db" not in g:
-#         g.db = pymysql.connect(
-#             host="localhost",
-#             user="root",
-#             password="Prithesh0103",
-#             db="meal_monkey",
-#             cursorclass=pymysql.cursors.DictCursor
-#         )
-#     return g.db
+
 
 @app.teardown_appcontext
 def close_db(exception):
@@ -77,7 +66,6 @@ def require_role(role):
 def delete_food(food_id):
     db = get_db()
     with db.cursor() as cursor:
-        # First delete any order_items linked to this food
         cursor.execute("DELETE FROM order_items WHERE food_id = %s", (food_id,))
         
         # Then delete the food item itself
@@ -86,7 +74,6 @@ def delete_food(food_id):
         db.commit()
 
     return jsonify({"message": "Food deleted successfully"}), 200
-
 
 
 # ---------------- USERS ----------------
@@ -109,7 +96,7 @@ def register():
                 "INSERT INTO users (name, email, password, phone, avatar_url) VALUES (%s, %s, %s, %s, %s)",
                 (name, email, password, phone, avatar_url)
             )
-            db.commit()  # 🔥 this line is missing
+            db.commit()
             return jsonify({
                 "message": "User registered successfully",
                 "avatar_url": avatar_url
@@ -124,7 +111,7 @@ def user_login():
     password = data.get("password")
 
     db = get_db()
-    with db.cursor(pymysql.cursors.DictCursor) as cursor:  # <-- add DictCursor here
+    with db.cursor(pymysql.cursors.DictCursor) as cursor: 
         cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
         user = cursor.fetchone()
 
@@ -166,7 +153,7 @@ def restaurant_register():
                 (name, email, password)
             )
             cursor.execute("UPDATE restaurant_invites SET used=TRUE WHERE invite_code=%s", (invite_code,))
-            db.commit()  # 🔥 this line is missing
+            db.commit()
             return jsonify({"message": "Restaurant registered successfully"})
         except Exception as e:
             print("DEBUG:", e)
@@ -293,7 +280,7 @@ def add_food():
             """,
             (restaurant_id, name, description, float(price), veg_nonveg, image_url),
         )
-        db.commit()   # 🔥🔥🔥 THIS IS WHAT YOU ARE MISSING
+        db.commit()
 
         new_id = cursor.lastrowid
 
@@ -336,7 +323,7 @@ def toggle_shop_status():
             "UPDATE restaurants SET shop_status=%s WHERE restaurant_id=%s",
             (new_status, restaurant_id)
         )
-    db.commit()   # ⭐ REQUIRED
+    db.commit()
 
     return jsonify({"status": new_status})
 
@@ -388,15 +375,12 @@ def upload_restaurant_image():
 
     if not image:
         return jsonify({"message": "No image provided"}), 400
-
-    # Pillow check for 16:9
+    
     img = Image.open(image.stream)
     width, height = img.size
     ratio = width / height
 
-
-    # Upload to Cloudinary (use stream!)
-    image.stream.seek(0)  # reset pointer after Pillow read
+    image.stream.seek(0)  
     upload_result = cloudinary.uploader.upload(image.stream, resource_type="image")
     image_url = upload_result["secure_url"]
 
@@ -443,14 +427,12 @@ def add_to_cart():
 
     db = get_db()
     with db.cursor() as cursor:
-        # Get restaurant of this food
         cursor.execute("SELECT restaurant_id FROM menu WHERE food_id=%s", (food_id,))
         food = cursor.fetchone()
         if not food:
             return jsonify({"message": "Food not found"}), 404
         food_restaurant_id = food["restaurant_id"]
 
-        # Check existing cart items
         cursor.execute("""
             SELECT c.*, m.restaurant_id FROM cart c
             JOIN menu m ON c.food_id = m.food_id
@@ -463,7 +445,6 @@ def add_to_cart():
                 "message": "You can only add items from one restaurant at a time. Clear your cart first."
             }), 400
 
-        # Check if item already exists in cart
         cursor.execute("SELECT quantity FROM cart WHERE user_id=%s AND food_id=%s", (user_id, food_id))
         item = cursor.fetchone()
         if item:
@@ -517,7 +498,6 @@ def place_order():
     user_id = session.get("user_id")
     db = get_db()
     with db.cursor() as cursor:
-        # Fetch cart items + price + restaurant_id
         cursor.execute("""
             SELECT c.food_id, c.quantity, m.price, m.restaurant_id
             FROM cart c
@@ -534,7 +514,6 @@ def place_order():
             return jsonify({"message": "Cart has items from multiple restaurants"}), 400
         restaurant_id = restaurant_ids.pop()
 
-        # Calculate total price
         total_price = sum(item["price"] * item["quantity"] for item in cart_items)
 
         # Insert order
@@ -673,10 +652,9 @@ def get_orders():
         if not user_id:
             return jsonify({"error": "Login first!"}), 401
 
-        cursor = db.cursor()  # <-- default cursor returns tuples
+        cursor = db.cursor()  
 
-        # Use this to get dicts instead of tuples
-        cursor = db.cursor(pymysql.cursors.DictCursor)  # <-- key fix here
+        cursor = db.cursor(pymysql.cursors.DictCursor)
         cursor.execute("""
             SELECT 
                 o.*,
@@ -736,7 +714,7 @@ def get_user_name():
     db = get_db()
     with db.cursor() as cursor:
         cursor.execute("SELECT name, avatar_url FROM users WHERE user_id=%s", (user_id,))
-        user = cursor.fetchone()  # now returns dict
+        user = cursor.fetchone() 
 
     if not user:
         return jsonify({"error": "User not found"}), 404
